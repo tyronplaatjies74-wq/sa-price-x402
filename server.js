@@ -1,7 +1,7 @@
 const http = require('http');
 const PORT = process.env.PORT || 10000;
 const ORIGIN = 'https://sa-price-x402.onrender.com';
-const PAY_TO = '0x3d481feb3d4afbe4a4e5fa100000000000000000000000000';
+const PAY_TO = '0x3d481feb3d4afbe4a4e5fa100000000000000000000000000000000';
 const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const EMAIL = 'tyronplaatjies74@gmail.com';
 
@@ -20,7 +20,6 @@ const server = http.createServer((req,res)=>{
  const cors = {'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'*','Access-Control-Expose-Headers':'PAYMENT-REQUIRED,PAYMENT-RESPONSE'};
  if(req.method==='OPTIONS'){res.writeHead(204,cors);res.end();return;}
  if(u.includes('favicon')){res.writeHead(204,cors);res.end();return;}
- 
  if(u.includes('.well-known/x402')){
   res.writeHead(200,{...cors,'Content-Type':'application/json'});
   res.end(JSON.stringify({
@@ -39,7 +38,6 @@ const server = http.createServer((req,res)=>{
   }));
   return;
  }
-
  if(u.includes('openapi.json')){
   const spec = {
    openapi:"3.0.0",
@@ -68,7 +66,6 @@ const server = http.createServer((req,res)=>{
   res.end(JSON.stringify(spec));
   return;
  }
-
  if(u==="/"||u.startsWith("/?")){res.writeHead(200,{...cors,'Content-Type':'application/json'});res.end(JSON.stringify({ok:true, message:"SA MEGA X402 API LIVE v3", price:ORIGIN+"/price"}));return;}
  if(u.startsWith("/price")){res.writeHead(402,{...cors,'Content-Type':'application/json','PAYMENT-REQUIRED':x402Header(full)});res.end(JSON.stringify({error:"Payment Required"}));return;}
  res.writeHead(404,{...cors,'Content-Type':'application/json'});res.end(JSON.stringify({error:"Not found"}));
