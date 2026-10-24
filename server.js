@@ -9,15 +9,7 @@ function x402Header(url){
  const data = {
   x402Version: 2,
   resource: { url: url, description:"SA prices", mimeType:"application/json" },
-  accepts: [{ 
-    scheme:"exact", 
-    network:"eip155:8453", 
-    amount:"10000", 
-    asset:USDC, 
-    payTo:PAY_TO, 
-    maxTimeoutSeconds:300,
-    extra: { name:"USDC", version:"2" }
-  }],
+  accepts: [{ scheme:"exact", network:"eip155:8453", amount:"10000", asset:USDC, payTo:PAY_TO, maxTimeoutSeconds:300, extra:{name:"USDC", version:"2"}}],
   error:"Payment Required"
  };
  return Buffer.from(JSON.stringify(data)).toString('base64');
@@ -26,22 +18,14 @@ function x402Header(url){
 const server = http.createServer((req,res)=>{
  const u = req.url || '/';
  const full = ORIGIN + u;
- const cors = {
-  'Access-Control-Allow-Origin':'*',
-  'Access-Control-Allow-Methods':'GET,POST,OPTIONS',
-  'Access-Control-Allow-Headers':'*',
-  'Access-Control-Expose-Headers':'PAYMENT-REQUIRED,PAYMENT-RESPONSE',
- };
-
+ const cors = {'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'*','Access-Control-Expose-Headers':'PAYMENT-REQUIRED,PAYMENT-RESPONSE'};
  if(req.method==='OPTIONS'){res.writeHead(204,cors);res.end();return;}
  if(u.includes('favicon')){res.writeHead(204,cors);res.end();return;}
-
  if(u.includes('.well-known/x402')){
   res.writeHead(200,{...cors,'Content-Type':'application/json'});
   res.end(JSON.stringify({x402Version:2, name:"SA Price API", resources:[{url:ORIGIN+'/price',method:"GET", description:"Paid prices"}], ownershipProofs:[PAY_TO]}));
   return;
  }
-
  if(u.includes('openapi.json')){
   const spec = {
    openapi:"3.0.0",
@@ -49,7 +33,19 @@ const server = http.createServer((req,res)=>{
    servers:[{url:ORIGIN}],
    paths:{
     "/":{get:{summary:"Stats FREE", security:[], responses:{"200":{description:"ok"}}}},
-    "/price":{get:{summary:"SA prices - paid", responses:{"402":{description:"Payment Required"}, "200":{description:"ok"}}}},
+    "/price":{
+     get:{
+      summary:"SA prices - paid",
+      parameters:[
+        {name:"product", in:"query", required:false, schema:{type:"string"}, description:"Product name e.g. apples"},
+        {name:"region", in:"query", required:false, schema:{type:"string"}, description:"Region e.g. Wellington"}
+      ],
+      responses:{
+        "402":{description:"Payment Required"},
+        "200":{description:"ok", content:{"application/json":{schema:{type:"object", properties:{product:{type:"string"}, price:{type:"number"}}}}}}
+      }
+     }
+    },
     "/.well-known/x402":{get:{summary:"Discovery", security:[], responses:{"200":{description:"ok"}}}},
     "/openapi.json":{get:{summary:"OpenAPI", security:[], responses:{"200":{description:"ok"}}}}
    }
@@ -58,21 +54,8 @@ const server = http.createServer((req,res)=>{
   res.end(JSON.stringify(spec));
   return;
  }
-
- if(u==="/"||u.startsWith("/?")){
-  res.writeHead(200,{...cors,'Content-Type':'application/json'});
-  res.end(JSON.stringify({ok:true, message:"SA MEGA X402 API LIVE v2", price:ORIGIN+"/price"}));
-  return;
- }
-
- if(u.startsWith("/price")){
-  res.writeHead(402,{...cors,'Content-Type':'application/json','PAYMENT-REQUIRED':x402Header(full)});
-  res.end(JSON.stringify({error:"Payment Required"}));
-  return;
- }
-
- res.writeHead(404,{...cors,'Content-Type':'application/json'});
- res.end(JSON.stringify({error:"Not found"}));
+ if(u==="/"||u.startsWith("/?")){res.writeHead(200,{...cors,'Content-Type':'application/json'});res.end(JSON.stringify({ok:true, message:"SA MEGA X402 API LIVE v3", price:ORIGIN+"/price"}));return;}
+ if(u.startsWith("/price")){res.writeHead(402,{...cors,'Content-Type':'application/json','PAYMENT-REQUIRED':x402Header(full)});res.end(JSON.stringify({error:"Payment Required"}));return;}
+ res.writeHead(404,{...cors,'Content-Type':'application/json'});res.end(JSON.stringify({error:"Not found"}));
 });
-
 server.listen(PORT,()=>console.log("Listening "+PORT));
