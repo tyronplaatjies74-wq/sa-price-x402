@@ -1,7 +1,7 @@
 const http = require('http');
 const PORT = process.env.PORT || 10000;
 const ORIGIN = 'https://sa-price-x402.onrender.com';
-const PAY_TO = '0x3d481FEB3d4afbE4a4E5fA100000000000000000000';
+const PAY_TO = '0x3d481feb3d4afbe4a4e5fa100000000000000000000';
 const EMAIL = 'tyronplaatjies74@gmail.com';
 const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 
