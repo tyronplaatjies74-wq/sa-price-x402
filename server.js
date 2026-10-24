@@ -27,7 +27,11 @@ const server = http.createServer((req,res)=>{
   if(req.method==='OPTIONS'){res.writeHead(204,cors);return res.end();}
 
   if(u.includes('favicon')){res.writeHead(204,cors);return res.end();}
-
+if(u.includes('x402')||u.includes('.well-known')){
+res.writeHead(200,{...cors,'Content-Type':'application/json'});
+res.end(JSON.stringify({x402Version:2,resources:[{url:ORIGIN+'/price',method:"GET",description:"SA prices"},{url:ORIGIN+'/products',method:"GET"}],ownershipProofs:["0x3d481FEB3d4afbE4a4E5fA1"]}));
+return;
+}
   if(u.includes('openapi.json')){
     const spec = {
       openapi:"3.1.0",
