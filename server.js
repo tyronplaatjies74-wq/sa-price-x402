@@ -5,7 +5,7 @@ a.use(c({origin:'*'}));
 const U='https://sa-price-'+'x402.onrender.com';
 const R=U+'/price';
 const A='0x833589fCD6eD'+'b6E08f4c7C32D4f71b54bdA02913';
-const P='0x00000000000000'+'000000000000000000000000';
+const P='0x6f60659390aD'+'A1D02B14024d8c9d0C889f2F89c3';
 const O={openapi:"3.0.0",info:{title:"SA Grocery Price API",version:"1.0.0",contact:{email:"tyron@test.com"}},servers:[{url:U}],paths:{"/price":{get:{parameters:[{name:"item",in:"query",required:false,schema:{type:"string"}}],responses:{"200":{description:"ok"}},"x-payment-info":{amount:"0.002",currency:"USD"}}}}};
 a.get('/openapi.json',(q,r)=>r.json(O));
 a.get('/price',(q,r)=>{
