@@ -4,6 +4,13 @@ const ORIGIN = 'https://sa-price-x402.onrender.com';
 const PAY_TO = '0x3d481feb3d4afbe4a4e5fa100000000000000000000000000000000';
 const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const EMAIL = 'tyronplaatjies74@gmail.com';
+const SECRET_KEY = 'tyron2026'; // <-- YOUR SECRET KEY TO ADD PRICES
+
+// REAL PRICES DATABASE - you own this
+let REAL_PRICES = [
+  {store:"Shoprite", item:"Bread White", price:"R22.50", region:"Wellington", added:"2026-10-24", by:"Tyron"},
+  {store:"Pick n Pay", item:"Milk 2L", price:"R36.99", region:"Wellington", added:"2026-10-24", by:"Tyron"}
+];
 
 function x402Header(url){
  return Buffer.from(JSON.stringify({
@@ -20,12 +27,32 @@ const server = http.createServer((req,res)=>{
  const cors = {'Access-Control-Allow-Origin':'*','Access-Control-Allow-Methods':'GET,POST,OPTIONS','Access-Control-Allow-Headers':'*','Access-Control-Expose-Headers':'PAYMENT-REQUIRED,PAYMENT-RESPONSE'};
  if(req.method==='OPTIONS'){res.writeHead(204,cors);res.end();return;}
  if(u.includes('favicon')){res.writeHead(204,cors);res.end();return;}
+
+ // NEW: ADD REAL PRICE - only you with secret key
+ if(u.startsWith('/add-price')){
+   const url = new URL(full);
+   const key = url.searchParams.get('key');
+   if(key !== SECRET_KEY){
+     res.writeHead(403,{...cors,'Content-Type':'application/json'});
+     res.end(JSON.stringify({error:"Wrong key"}));
+     return;
+   }
+   const store = url.searchParams.get('store') || "Unknown";
+   const item = url.searchParams.get('item') || url.searchParams.get('product') || "Unknown";
+   const price = url.searchParams.get('price') || "0";
+   const region = url.searchParams.get('region') || "Wellington";
+   REAL_PRICES.unshift({store, item, price:"R"+price, region, added: new Date().toISOString().split('T')[0], by:"Tyron"});
+   res.writeHead(200,{...cors,'Content-Type':'application/json'});
+   res.end(JSON.stringify({ok:true, message:"Price added!", total: REAL_PRICES.length, latest: REAL_PRICES[0]}));
+   return;
+ }
+
  if(u.includes('.well-known/x402')){
   res.writeHead(200,{...cors,'Content-Type':'application/json'});
   res.end(JSON.stringify({
     x402Version:2,
     name:"SA Price API",
-    description:"SA prices API Wellington",
+    description:"SA prices API Wellington - Real observed prices",
     contact:{email:EMAIL},
     resources:[{
       url:ORIGIN+'/price',
@@ -45,19 +72,7 @@ const server = http.createServer((req,res)=>{
    servers:[{url:ORIGIN}],
    paths:{
     "/":{get:{summary:"Stats FREE", security:[], responses:{"200":{description:"ok"}}}},
-    "/price":{
-     get:{
-      summary:"SA prices - paid",
-      parameters:[
-        {name:"product", in:"query", required:true, schema:{type:"string"}, description:"Product name e.g. apples"},
-        {name:"region", in:"query", required:true, schema:{type:"string"}, description:"Region e.g. Wellington"}
-      ],
-      responses:{
-        "402":{description:"Payment Required"},
-        "200":{description:"ok", content:{"application/json":{schema:{type:"object", properties:{product:{type:"string"}, price:{type:"number"}}}}}}
-      }
-     }
-    },
+    "/price":{get:{summary:"SA prices - paid", parameters:[{name:"product", in:"query", required:true, schema:{type:"string"}},{name:"region", in:"query", required:true, schema:{type:"string"}}], responses:{"402":{description:"Payment Required"},"200":{description:"ok"}}}},
     "/.well-known/x402":{get:{summary:"Discovery", security:[], responses:{"200":{description:"ok"}}}},
     "/openapi.json":{get:{summary:"OpenAPI", security:[], responses:{"200":{description:"ok"}}}}
    }
@@ -66,18 +81,18 @@ const server = http.createServer((req,res)=>{
   res.end(JSON.stringify(spec));
   return;
  }
- if(u==="/"||u.startsWith("/?")){res.writeHead(200,{...cors,'Content-Type':'application/json'});res.end(JSON.stringify({ok:true, message:"SA MEGA X402 API LIVE v3", price:ORIGIN+"/price"}));return;}
+ if(u==="/"||u.startsWith("/?")){res.writeHead(200,{...cors,'Content-Type':'application/json'});res.end(JSON.stringify({ok:true, message:"SA MEGA X402 API LIVE v3 - REAL PRICES", price:ORIGIN+"/price", add_price:ORIGIN+"/add-price?key=YOURKEY&store=Shoprite&item=Bread&price=22.50"}));return;}
+ 
+ // FREE TEST MODE - NOW SHOWS REAL PRICES
  if(u.startsWith("/price") && u.includes("test=true")){
   res.writeHead(200,{...cors,'Content-Type':'application/json'});
   res.end(JSON.stringify({
     ok:true,
-    Wellington_Prices: [
-      {store:"Shoprite", item:"Bread", price:"R19.99", source:"SA MEGA"},
-      {store:"Pick n Pay", item:"Milk 2L", price:"R35.99"},
-      {store:"Woolworths", item:"Eggs 30", price:"R89.99"}
-    ],
-    test_mode:"FREE ACCESS - add ?test=true",
-    live: "https://sa-price-x402.onrender.com/price"
+    region:"Wellington",
+    count: REAL_PRICES.length,
+    prices: REAL_PRICES,
+    disclaimer:"Independent observations, not affiliated with stores",
+    live: ORIGIN+"/price"
   }));
   return;
 }
