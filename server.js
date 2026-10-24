@@ -48,6 +48,16 @@ const server=http.createServer((req,res)=>{
  let id=(url.searchParams.get('id')||'').toLowerCase(); let type=(url.searchParams.get('type')||'').toLowerCase();
  let fullUrl = `https://${req.headers.host}${req.url}`;
 
+ if(req.method==='OPTIONS'){
+  res.writeHead(204,{
+   'Access-Control-Allow-Origin':'*',
+   'Access-Control-Allow-Methods':'GET, POST, OPTIONS',
+   'Access-Control-Allow-Headers':'PAYMENT-SIGNATURE, X-PAYMENT, Content-Type',
+   'Access-Control-Expose-Headers':'PAYMENT-REQUIRED, PAYMENT-RESPONSE'
+  });
+  res.end(); return;
+ }
+
  if(path==='/.well-known/x402' || path==='/openapi.json' || path==='/discovery'){
   res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}); res.end(JSON.stringify(discovery)); return;
  }
@@ -64,10 +74,19 @@ const server=http.createServer((req,res)=>{
  if(path==='/cars'){res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'});res.end(JSON.stringify(CARS));return;}
  if(path==='/price'){
   let amount="25"; if(type==="product"||PRODUCTS[id])amount="10"; if(type==="hotel"||HOTELS[id])amount="25"; if(type==="bnb"||BNB[id])amount="15"; if(type==="restaurant"||RESTAURANTS[id])amount="15"; if(type==="activity"||ACTIVITIES[id])amount="35"; if(type==="car"||CARS[id])amount="50";
-  let body = x402Response(amount, fullUrl);
-  res.writeHead(402,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}); res.end(JSON.stringify(body)); return;
+  let bodyObj = x402Response(amount, fullUrl);
+  let body = JSON.stringify(bodyObj);
+  let b64 = Buffer.from(body).toString('base64');
+  res.writeHead(402,{
+    'Content-Type':'application/json',
+    'Access-Control-Allow-Origin':'*',
+    'Access-Control-Expose-Headers':'PAYMENT-REQUIRED, PAYMENT-RESPONSE',
+    'PAYMENT-REQUIRED': b64,
+    'Access-Control-Allow-Headers':'PAYMENT-SIGNATURE, X-PAYMENT, Content-Type'
+  });
+  res.end(body); return;
  }
- if(path==='/favicon.ico'){res.writeHead(204);res.end();return;}
- res.writeHead(404,{'Content-Type':'application/json'}); res.end(JSON.stringify({error:"Try /.well-known/x402 for discovery"}));
+ if(path==='/favicon.ico'){res.writeHead(204,{'Access-Control-Allow-Origin':'*'});res.end();return;}
+ res.writeHead(404,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}); res.end(JSON.stringify({error:"Try /.well-known/x402 for discovery"}));
 });
-server.listen(PORT,()=>console.log("MEGA API LIVE V2"));
+server.listen(PORT,()=>console.log("MEGA API LIVE V3 FIXED"));
