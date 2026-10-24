@@ -13,15 +13,15 @@ const RESTAURANTS={};for(let i=1;i<=150;i++){RESTAURANTS[`rest${i}`]={name:`Rest
 const ACTIVITIES={};const acts=["Shark Cage","Safari","Wine Tasting","Table Mountain","Bungee","Paragliding","Whale Watching","Township Tour"];acts.forEach(a=>{for(let i=1;i<=20;i++){ACTIVITIES[`${a.toLowerCase().replace(/ /g,'')}${i}`]={name:`${a} ${i}`,price:500+i*50}}});
 const CARS={};for(let i=1;i<=100;i++){CARS[`car${i}`]={name:`Rental Car ${i}`,price:450+i*10}}
 
-function x402Response(amountCents, resourceUrl){
- const amountAtomic = (amountCents * 10000).toString();
+function x402Response(amountDollars, resourceUrl){
+ const atomic = (parseInt(amountDollars)*1000000).toString();
  return {
   x402Version: 2,
   error: "Payment Required",
   accepts: [{
     scheme: "exact",
     network: NETWORK,
-    maxAmountRequired: amountAtomic,
+    maxAmountRequired: atomic,
     resource: resourceUrl,
     payTo: PAY_TO,
     asset: ASSET,
@@ -38,7 +38,8 @@ const discovery = {
  paths:{
   "/":{get:{summary:"Stats",security:[],responses:{"200":{description:"OK"}}}},
   "/products":{get:{summary:"List products",security:[],responses:{"200":{description:"OK"}}}},
-  "/price":{get:{summary:"Get paid price",parameters:[{name:"type",in:"query",schema:{type:"string"}},{name:"id",in:"query",schema:{type:"string"}}],responses:{"402":{description:"Payment Required","content":{"application/json":{"schema":{"type":"object"}}}}}}}
+  "/hotels":{get:{summary:"List hotels",security:[],responses:{"200":{description:"OK"}}}},
+  "/price":{get:{summary:"Get paid price",parameters:[{name:"type",in:"query",required:true,schema:{type:"string"}},{name:"id",in:"query",required:false,schema:{type:"string"}}],responses:{"200":{description:"OK after payment"},"402":{description:"Payment Required","content":{"application/json":{"schema":{"type":"object"}}}}}}}
  },
  "x-402": { asset: ASSET, network: NETWORK, payTo: PAY_TO }
 };
@@ -52,8 +53,8 @@ const server=http.createServer((req,res)=>{
   res.writeHead(204,{
    'Access-Control-Allow-Origin':'*',
    'Access-Control-Allow-Methods':'GET, POST, OPTIONS',
-   'Access-Control-Allow-Headers':'PAYMENT-SIGNATURE, X-PAYMENT, Content-Type',
-   'Access-Control-Expose-Headers':'PAYMENT-REQUIRED, PAYMENT-RESPONSE'
+   'Access-Control-Allow-Headers':'PAYMENT-SIGNATURE, X-PAYMENT, Content-Type, Authorization',
+   'Access-Control-Expose-Headers':'PAYMENT-REQUIRED, PAYMENT-RESPONSE, WWW-Authenticate'
   });
   res.end(); return;
  }
@@ -80,13 +81,17 @@ const server=http.createServer((req,res)=>{
   res.writeHead(402,{
     'Content-Type':'application/json',
     'Access-Control-Allow-Origin':'*',
-    'Access-Control-Expose-Headers':'PAYMENT-REQUIRED, PAYMENT-RESPONSE',
+    'Access-Control-Expose-Headers':'PAYMENT-REQUIRED, PAYMENT-RESPONSE, WWW-Authenticate',
     'PAYMENT-REQUIRED': b64,
+    'WWW-Authenticate': `x402 ${b64}`,
     'Access-Control-Allow-Headers':'PAYMENT-SIGNATURE, X-PAYMENT, Content-Type'
   });
   res.end(body); return;
  }
- if(path==='/favicon.ico'){res.writeHead(204,{'Access-Control-Allow-Origin':'*'});res.end();return;}
+ if(path==='/favicon.ico'){
+  res.writeHead(200,{'Content-Type':'image/x-icon','Access-Control-Allow-Origin':'*'});
+  res.end(Buffer.from('0000010001002020100001000400E8020000160000002800000020000000400000000100040000000000800200000000000000000000000000000000000000000080000080000000808000800000008000800080800000C0C0C000808080000000FF0000FF000000FFFF00FF000000FF00FFFF00FFFFFF00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000','hex')); return;
+ }
  res.writeHead(404,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}); res.end(JSON.stringify({error:"Try /.well-known/x402 for discovery"}));
 });
-server.listen(PORT,()=>console.log("MEGA API LIVE V3 FIXED"));
+server.listen(PORT,()=>console.log("MEGA API LIVE V4"));
