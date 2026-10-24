@@ -13,48 +13,62 @@ const RESTAURANTS={};for(let i=1;i<=150;i++){RESTAURANTS[`rest${i}`]={name:`Rest
 const ACTIVITIES={};const acts=["Shark Cage","Safari","Wine Tasting","Table Mountain","Bungee","Paragliding","Whale Watching","Township Tour"];acts.forEach(a=>{for(let i=1;i<=20;i++){ACTIVITIES[`${a.toLowerCase().replace(/ /g,'')}${i}`]={name:`${a} ${i}`,price:500+i*50}}});
 const CARS={};for(let i=1;i<=100;i++){CARS[`car${i}`]={name:`Rental Car ${i}`,price:450+i*10}}
 
-function x402Response(amountDollars, resourceUrl){
- const atomic = (parseInt(amountDollars)*1000000).toString();
- return {
-  x402Version: 2,
-  error: "Payment Required",
-  accepts: [{
-    scheme: "exact",
-    network: NETWORK,
-    maxAmountRequired: atomic,
-    resource: resourceUrl,
-    payTo: PAY_TO,
-    asset: ASSET,
-    maxTimeoutSeconds: 300,
-    extra: { name: "USDC", version: "2" }
-  }]
+function make402(resourceUrl, dollars){
+ const atomic = (Math.round(parseFloat(dollars)*1000000)).toString();
+ const paymentObj = {
+   x402Version: 2,
+   error: "Payment Required",
+   resource: { url: resourceUrl, description: "SA MEGA X402 API - paid price data", mimeType: "application/json" },
+   accepts: [{ scheme: "exact", network: NETWORK, amount: atomic, payTo: PAY_TO, asset: ASSET, maxTimeoutSeconds: 300, extra: { name: "USDC", version: "2" } }]
  };
+ const json = JSON.stringify(paymentObj);
+ const b64 = Buffer.from(json).toString('base64');
+ return { json, b64 };
 }
 
 const discovery = {
- openapi:"3.0.0",
- info:{title:"SA MEGA X402 API",version:"1.0.0",description:"988 SA endpoints - hotels, BnBs, groceries, restaurants, cars, activities - all X402 paywalled",contact:{email:"tyron@example.com"}},
+ openapi:"3.1.0",
+ info:{title:"SA MEGA X402 API",version:"1.0.0",description:"988 SA endpoints - hotels, BnBs, groceries, restaurants, cars, activities - all X402 paywalled","x-guidance":"Use GET /price?type=hotel&id=hotel1 for price data",contact:{email:"tyron@example.com"}},
  servers:[{url:"https://sa-price-x402.onrender.com"}],
  paths:{
   "/":{get:{summary:"Stats",security:[],responses:{"200":{description:"OK"}}}},
   "/products":{get:{summary:"List products",security:[],responses:{"200":{description:"OK"}}}},
   "/hotels":{get:{summary:"List hotels",security:[],responses:{"200":{description:"OK"}}}},
-  "/price":{get:{summary:"Get paid price",parameters:[{name:"type",in:"query",required:true,schema:{type:"string"}},{name:"id",in:"query",required:false,schema:{type:"string"}}],responses:{"200":{description:"OK after payment"},"402":{description:"Payment Required","content":{"application/json":{"schema":{"type":"object"}}}}}}}
+  "/bnb":{get:{summary:"List BnB",security:[],responses:{"200":{description:"OK"}}}},
+  "/price":{
+    get:{
+      operationId:"getPrice",
+      summary:"Get paid price",
+      tags:["Price"],
+      "x-payment-info":{
+        price:{mode:"fixed",currency:"USDC",amount:"25000000",network:NETWORK,asset:ASSET,payTo:PAY_TO},
+        protocols:[{"x402":{}}]
+      },
+      parameters:[
+        {name:"type",in:"query",required:false,schema:{type:"string",example:"hotel"},description:"product, hotel, bnb, restaurant, activity, car"},
+        {name:"id",in:"query",required:false,schema:{type:"string",example:"theoysterbox1"}}
+      ],
+      requestBody:{required:false},
+      responses:{
+        "200":{description:"Success after payment",content:{"application/json":{schema:{type:"object"}}}},
+        "402":{description:"Payment Required",content:{"application/json":{schema:{type:"object"}}}}
+      }
+    }
+  }
  },
  "x-402": { asset: ASSET, network: NETWORK, payTo: PAY_TO }
 };
 
 const server=http.createServer((req,res)=>{
  let url=new URL(req.url,`http://${req.headers.host}`); let path=url.pathname;
- let id=(url.searchParams.get('id')||'').toLowerCase(); let type=(url.searchParams.get('type')||'').toLowerCase();
  let fullUrl = `https://${req.headers.host}${req.url}`;
 
  if(req.method==='OPTIONS'){
   res.writeHead(204,{
    'Access-Control-Allow-Origin':'*',
    'Access-Control-Allow-Methods':'GET, POST, OPTIONS',
-   'Access-Control-Allow-Headers':'PAYMENT-SIGNATURE, X-PAYMENT, Content-Type, Authorization',
-   'Access-Control-Expose-Headers':'PAYMENT-REQUIRED, PAYMENT-RESPONSE, WWW-Authenticate'
+   'Access-Control-Allow-Headers':'PAYMENT-SIGNATURE, X-PAYMENT, Content-Type, Authorization, SIGN-IN-WITH-X',
+   'Access-Control-Expose-Headers':'PAYMENT-REQUIRED, PAYMENT-RESPONSE'
   });
   res.end(); return;
  }
@@ -62,36 +76,27 @@ const server=http.createServer((req,res)=>{
  if(path==='/.well-known/x402' || path==='/openapi.json' || path==='/discovery'){
   res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}); res.end(JSON.stringify(discovery)); return;
  }
- if(path==='/'){
-  res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'});
-  res.end(JSON.stringify({service:"SA MEGA X402 API",wallet:PAY_TO,stats:{products:Object.keys(PRODUCTS).length,hotels:Object.keys(HOTELS).length,bnb:Object.keys(BNB).length,restaurants:Object.keys(RESTAURANTS).length,activities:Object.keys(ACTIVITIES).length,cars:Object.keys(CARS).length,TOTAL:988},discovery:"/.well-known/x402"})); return;
- }
- if(path==='/all'){res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'});res.end(JSON.stringify({PRODUCTS,HOTELS,BNB,RESTAURANTS,ACTIVITIES,CARS}));return;}
+ if(path==='/'){res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'});res.end(JSON.stringify({service:"SA MEGA X402 API",wallet:PAY_TO,stats:{TOTAL:988},discovery:"/.well-known/x402"}));return;}
  if(path==='/products'){res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'});res.end(JSON.stringify(PRODUCTS));return;}
  if(path==='/hotels'){res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'});res.end(JSON.stringify(HOTELS));return;}
  if(path==='/bnb'){res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'});res.end(JSON.stringify(BNB));return;}
  if(path==='/restaurants'){res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'});res.end(JSON.stringify(RESTAURANTS));return;}
  if(path==='/activities'){res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'});res.end(JSON.stringify(ACTIVITIES));return;}
  if(path==='/cars'){res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'});res.end(JSON.stringify(CARS));return;}
+ if(path==='/all'){res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'});res.end(JSON.stringify({PRODUCTS,HOTELS,BNB,RESTAURANTS,ACTIVITIES,CARS}));return;}
  if(path==='/price'){
+  let type=(url.searchParams.get('type')||'').toLowerCase();
+  let id=(url.searchParams.get('id')||'').toLowerCase();
   let amount="25"; if(type==="product"||PRODUCTS[id])amount="10"; if(type==="hotel"||HOTELS[id])amount="25"; if(type==="bnb"||BNB[id])amount="15"; if(type==="restaurant"||RESTAURANTS[id])amount="15"; if(type==="activity"||ACTIVITIES[id])amount="35"; if(type==="car"||CARS[id])amount="50";
-  let bodyObj = x402Response(amount, fullUrl);
-  let body = JSON.stringify(bodyObj);
-  let b64 = Buffer.from(body).toString('base64');
+  let {json,b64}=make402(fullUrl, amount);
   res.writeHead(402,{
     'Content-Type':'application/json',
     'Access-Control-Allow-Origin':'*',
-    'Access-Control-Expose-Headers':'PAYMENT-REQUIRED, PAYMENT-RESPONSE, WWW-Authenticate',
-    'PAYMENT-REQUIRED': b64,
-    'WWW-Authenticate': `x402 ${b64}`,
-    'Access-Control-Allow-Headers':'PAYMENT-SIGNATURE, X-PAYMENT, Content-Type'
+    'Access-Control-Expose-Headers':'PAYMENT-REQUIRED, PAYMENT-RESPONSE',
+    'PAYMENT-REQUIRED': b64
   });
-  res.end(body); return;
+  res.end(json); return;
  }
- if(path==='/favicon.ico'){
-  res.writeHead(200,{'Content-Type':'image/x-icon','Access-Control-Allow-Origin':'*'});
-  res.end(Buffer.from('0000010001002020100001000400E8020000160000002800000020000000400000000100040000000000800200000000000000000000000000000000000000000080000080000000808000800000008000800080800000C0C0C000808080000000FF0000FF000000FFFF00FF000000FF00FFFF00FFFFFF00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000','hex')); return;
- }
- res.writeHead(404,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}); res.end(JSON.stringify({error:"Try /.well-known/x402 for discovery"}));
+ res.writeHead(404,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}); res.end(JSON.stringify({error:"Try /.well-known/x402"}));
 });
-server.listen(PORT,()=>console.log("MEGA API LIVE V4"));
+server.listen(PORT,()=>console.log("MEGA V6 LIVE"));
