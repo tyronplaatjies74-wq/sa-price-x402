@@ -67,7 +67,21 @@ const server = http.createServer((req,res)=>{
   return;
  }
  if(u==="/"||u.startsWith("/?")){res.writeHead(200,{...cors,'Content-Type':'application/json'});res.end(JSON.stringify({ok:true, message:"SA MEGA X402 API LIVE v3", price:ORIGIN+"/price"}));return;}
- if(u.startsWith("/price")){res.writeHead(402,{...cors,'Content-Type':'application/json','PAYMENT-REQUIRED':x402Header(full)});res.end(JSON.stringify({error:"Payment Required"}));return;}
+ if(u.startsWith("/price") && u.includes("test=true")){
+  res.writeHead(200,{...cors,'Content-Type':'application/json'});
+  res.end(JSON.stringify({
+    ok:true,
+    Wellington_Prices: [
+      {store:"Shoprite", item:"Bread", price:"R19.99", source:"SA MEGA"},
+      {store:"Pick n Pay", item:"Milk 2L", price:"R35.99"},
+      {store:"Woolworths", item:"Eggs 30", price:"R89.99"}
+    ],
+    test_mode:"FREE ACCESS - add ?test=true",
+    live: "https://sa-price-x402.onrender.com/price"
+  }));
+  return;
+}
+if(u.startsWith("/price")){res.writeHead(402,{...cors,'Content-Type':'application/json','PAYMENT-REQUIRED':x402Header(full)});res.end(JSON.stringify({error:"Payment Required", x402: "Pay with USDC on Base", price: "$0.01 per request"}));return;}
  res.writeHead(404,{...cors,'Content-Type':'application/json'});res.end(JSON.stringify({error:"Not found"}));
 });
 server.listen(PORT,()=>console.log("Listening "+PORT));
