@@ -1,7 +1,7 @@
-const express = require('express');
-const app = express();
-app.get('/', (req,res)=>res.json({ok:true}));
-app.get('/.well-known/x402.json',(req,res)=>res.json({x402Version:1,resources:[{url:"https://sa-price-x402.onrender.com/price",method:"GET",accepts:[{scheme:"exact",network:"base",amount:"10000"}]}]}));
-app.get('/openapi.json',(req,res)=>res.json({openapi:"3.0.0",info:{title:"SA Price"},servers:[{url:"https://sa-price-x402.onrender.com"}],paths:{"/price":{get:{summary:"price"}}}}));
-app.get('/price',(req,res)=>{if(!req.header('X-PAYMENT')) return res.status(402).json({x402Version:1,accepts:[{scheme:"exact",network:"base",amount:"10000",description:"Pay"}]});res.json({price:18.45})});
+const express=require('express');const cors=require('cors');const app=express();app.use(cors());app.use(express.json());
+app.get('/',(req,res)=>res.json({name:"SA Price API",live:true,openapi:"/openapi.json",x402:"/.well-known/x402.json"}));
+app.get('/openapi.json',(req,res)=>res.json({openapi:"3.0.0",info:{title:"SA Grocery Price API",version:"1.0.0",description:"SA Pick n Pay Checkers prices - pay per call"},servers:[{url:"https://sa-price-x402.onrender.com"}],paths:{"/price":{get:{summary:"Get SA grocery price",operationId:"getPrice",parameters:[{name:"item",in:"query",required:true,schema:{type:"string"}}],responses:{"200":{description:"ok"},"402":{description:"pay"}},"x-payment-info":{protocols:["x402"],mode:"fixed",amount:"0.002",currency:"USD",network:"base",asset:"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",description:"$0.002 per check"}}}}}));
+app.get('/.well-known/x402.json',(req,res)=>res.json({x402Version:2,kind:"x402",resources:[{url:"https://sa-price-x402.onrender.com/price",method:"GET",accepts:[{scheme:"exact",network:"eip155:8453",asset:"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",amount:"2000",payTo:"0x0000000000000000000000000000000000000000"}]}]}));
+app.get('/price',(req,res)=>{if(!req.header('X-PAYMENT')){res.set('PAYMENT-REQUIRED','true');return res.status(402).json({x402Version:2,accepts:[{scheme:"exact",network:"eip155:8453",asset:"0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",amount:"2000",payTo:"0x0000000000000000000000000000000000000000"}]});}res.json({item:req.query.item||"bread",store:"Pick n Pay",price:18.99,currency:"ZAR"});});
+app.get('/.well-known/x402',(req,res)=>res.redirect('/.well-known/x402.json'));
 app.listen(process.env.PORT||3000);
